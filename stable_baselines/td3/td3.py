@@ -124,10 +124,12 @@ class TD3(OffPolicyRLModel):
             self.graph = tf.Graph()
             with self.graph.as_default():
                 self.set_random_seed(self.seed)
-                n_cpu = multiprocessing.cpu_count()
-                if sys.platform == 'darwin':
-                    n_cpu //= 2
-                self.sess = tf_util.make_session(num_cpu=n_cpu, graph=self.graph)
+                # n_cpu = multiprocessing.cpu_count()
+                # if sys.platform == 'darwin':
+                #     n_cpu //= 2
+                # self.sess = tf_util.make_session(num_cpu=n_cpu, graph=self.graph)
+                # remove parallelism from your computation to have determinism
+                self.sess = tf_util.make_session(num_cpu=1, graph=self.graph)
 
                 self.replay_buffer = ReplayBuffer(self.buffer_size)
 

@@ -15,7 +15,11 @@ from stable_baselines.a2c.utils import total_episode_reward_logger
 
 class DQN(OffPolicyRLModel):
     """
-    The DQN model class. DQN paper: https://arxiv.org/pdf/1312.5602.pdf
+    The DQN model class.
+    DQN paper: https://arxiv.org/abs/1312.5602
+    Dueling DQN: https://arxiv.org/abs/1511.06581
+    Double-Q Learning: https://arxiv.org/abs/1509.06461
+    Prioritized Experience Replay: https://arxiv.org/abs/1511.05952
 
     :param policy: (DQNPolicy or str) The policy model to use (MlpPolicy, CnnPolicy, LnMlpPolicy, ...)
     :param env: (Gym environment or str) The environment to learn from (if registered in Gym, can be str)
@@ -27,11 +31,7 @@ class DQN(OffPolicyRLModel):
     :param exploration_final_eps: (float) final value of random action probability
     :param train_freq: (int) update the model every `train_freq` steps. set to None to disable printing
     :param batch_size: (int) size of a batched sampled from replay buffer for training
-    :param checkpoint_freq: (int) how often to save the model. This is so that the best version is restored at the
-            end of the training. If you do not wish to restore the best version
-            at the end of the training set this variable to None.
-    :param checkpoint_path: (str) replacement path used if you need to log to somewhere else than a temporary
-            directory.
+    :param double_q: (bool) Whether to enable Double-Q learning or not.
     :param learning_starts: (int) how many steps of the model to collect transitions for before learning starts
     :param target_network_update_freq: (int) update the target network every `target_network_update_freq` steps.
     :param prioritized_replay: (bool) if True prioritized replay buffer will be used.
@@ -50,7 +50,7 @@ class DQN(OffPolicyRLModel):
     """
 
     def __init__(self, policy, env, gamma=0.99, learning_rate=5e-4, buffer_size=50000, exploration_fraction=0.1,
-                 exploration_final_eps=0.02, train_freq=1, batch_size=32, checkpoint_freq=10000, checkpoint_path=None,
+                 exploration_final_eps=0.02, train_freq=1, batch_size=32, double_q=True,
                  learning_starts=1000, target_network_update_freq=500, prioritized_replay=False,
                  prioritized_replay_alpha=0.6, prioritized_replay_beta0=0.4, prioritized_replay_beta_iters=None,
                  prioritized_replay_eps=1e-6, param_noise=False, verbose=0, tensorboard_log=None,
@@ -60,7 +60,6 @@ class DQN(OffPolicyRLModel):
         super(DQN, self).__init__(policy=policy, env=env, replay_buffer=None, verbose=verbose, policy_base=DQNPolicy,
                                   requires_vec_env=False, policy_kwargs=policy_kwargs)
 
-        self.checkpoint_path = checkpoint_path
         self.param_noise = param_noise
         self.learning_starts = learning_starts
         self.train_freq = train_freq
@@ -68,7 +67,6 @@ class DQN(OffPolicyRLModel):
         self.prioritized_replay_eps = prioritized_replay_eps
         self.batch_size = batch_size
         self.target_network_update_freq = target_network_update_freq
-        self.checkpoint_freq = checkpoint_freq
         self.prioritized_replay_alpha = prioritized_replay_alpha
         self.prioritized_replay_beta0 = prioritized_replay_beta0
         self.prioritized_replay_beta_iters = prioritized_replay_beta_iters
@@ -79,6 +77,7 @@ class DQN(OffPolicyRLModel):
         self.gamma = gamma
         self.tensorboard_log = tensorboard_log
         self.full_tensorboard_log = full_tensorboard_log
+        self.double_q = double_q
 
         self.graph = None
         self.sess = None
@@ -131,7 +130,8 @@ class DQN(OffPolicyRLModel):
                     grad_norm_clipping=10,
                     param_noise=self.param_noise,
                     sess=self.sess,
-                    full_tensorboard_log=self.full_tensorboard_log
+                    full_tensorboard_log=self.full_tensorboard_log,
+                    double_q=self.double_q
                 )
                 self.proba_step = self.step_model.proba_step
                 self.params = tf_util.get_trainable_vars("deepq")
@@ -303,7 +303,7 @@ class DQN(OffPolicyRLModel):
 
         return actions, None
 
-    def action_probability(self, observation, state=None, mask=None, actions=None):
+    def action_probability(self, observation, state=None, mask=None, actions=None, logp=False):
         observation = np.array(observation)
         vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
 
@@ -318,6 +318,8 @@ class DQN(OffPolicyRLModel):
             actions_proba = actions_proba[np.arange(actions.shape[0]), actions]
             # normalize action proba shape
             actions_proba = actions_proba.reshape((-1, 1))
+            if logp:
+                actions_proba = np.log(actions_proba)
 
         if not vectorized_env:
             if state is not None:
@@ -329,10 +331,10 @@ class DQN(OffPolicyRLModel):
     def get_parameter_list(self):
         return self.params
 
-    def save(self, save_path):
+    def save(self, save_path, cloudpickle=False):
         # params
         data = {
-            "checkpoint_path": self.checkpoint_path,
+            "double_q": self.double_q,
             "param_noise": self.param_noise,
             "learning_starts": self.learning_starts,
             "train_freq": self.train_freq,
@@ -340,7 +342,6 @@ class DQN(OffPolicyRLModel):
             "prioritized_replay_eps": self.prioritized_replay_eps,
             "batch_size": self.batch_size,
             "target_network_update_freq": self.target_network_update_freq,
-            "checkpoint_freq": self.checkpoint_freq,
             "prioritized_replay_alpha": self.prioritized_replay_alpha,
             "prioritized_replay_beta0": self.prioritized_replay_beta0,
             "prioritized_replay_beta_iters": self.prioritized_replay_beta_iters,
@@ -359,23 +360,4 @@ class DQN(OffPolicyRLModel):
 
         params_to_save = self.get_parameters()
 
-        self._save_to_file(save_path, data=data, params=params_to_save)
-
-    @classmethod
-    def load(cls, load_path, env=None, **kwargs):
-        data, params = cls._load_from_file(load_path)
-
-        if 'policy_kwargs' in kwargs and kwargs['policy_kwargs'] != data['policy_kwargs']:
-            raise ValueError("The specified policy kwargs do not equal the stored policy kwargs. "
-                             "Stored kwargs: {}, specified kwargs: {}".format(data['policy_kwargs'],
-                                                                              kwargs['policy_kwargs']))
-
-        model = cls(policy=data["policy"], env=env, _init_setup_model=False)
-        model.__dict__.update(data)
-        model.__dict__.update(kwargs)
-        model.set_env(env)
-        model.setup_model()
-
-        model.load_parameters(params)
-
-        return model
+        self._save_to_file(save_path, data=data, params=params_to_save, cloudpickle=cloudpickle)

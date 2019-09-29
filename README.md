@@ -20,6 +20,8 @@ This toolset is a fork of OpenAI Baselines, with a major structural refactoring,
 - PEP8 compliant (unified code style)
 - Documented functions and classes
 - More tests & more code coverage
+- Additional algorithms: SAC and TD3 (+ HER support for DQN, DDPG, SAC and TD3)
+
 
 | **Features**                | **Stable-Baselines**              | **OpenAI Baselines**              |
 | --------------------------- | --------------------------------- | --------------------------------- |
@@ -33,7 +35,7 @@ This toolset is a fork of OpenAI Baselines, with a major structural refactoring,
 | PEP8 code style             | :heavy_check_mark:                | :heavy_check_mark: <sup>(5)</sup> |
 | Custom callback             | :heavy_check_mark:                | :heavy_minus_sign: <sup>(6)</sup> |
 
-<sup><sup>(1): Forked from previous version of OpenAI baselines, with now SAC in addition</sup></sup><br>
+<sup><sup>(1): Forked from previous version of OpenAI baselines, with now SAC and TD3 in addition</sup></sup><br>
 <sup><sup>(2): Currently not available for DDPG, and only from the run script. </sup></sup><br>
 <sup><sup>(3): Only via the run script.</sup></sup><br>
 <sup><sup>(4): Rudimentary logging of training information (no loss nor graph). </sup></sup><br>
@@ -83,9 +85,12 @@ brew install cmake openmpi
 To install stable-baselines on Windows, please look at the [documentation](https://stable-baselines.readthedocs.io/en/master/guide/install.html#prerequisites).
 
 ### Install using pip
-Install the Stable Baselines package
+Install the Stable Baselines package:
+```
+pip install stable-baselines[mpi]
+```
 
-Using pip from pypi:
+This includes an optional dependency on MPI, enabling algorithms DDPG, GAIL, PPO1 and TRPO. If you do not need these algorithms, you can install without MPI:
 ```
 pip install stable-baselines
 ```
@@ -148,7 +153,7 @@ All the following examples can be executed online using Google colab notebooks:
 | ------------------- | ---------------------------- | ------------------ | ------------------ | ------------------ | ------------------- | ------------------ | --------------------------------- |
 | A2C                 | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:  | :heavy_check_mark: | :heavy_check_mark:                |
 | ACER                | :heavy_check_mark:           | :heavy_check_mark: | :x: <sup>(5)</sup> | :heavy_check_mark: | :x:                 | :x:                | :heavy_check_mark:                |
-| ACKTR               | :heavy_check_mark:           | :heavy_check_mark: | :x: <sup>(5)</sup> | :heavy_check_mark: | :x:                 | :x:                | :heavy_check_mark:                |
+| ACKTR               | :heavy_check_mark:           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :x:                 | :x:                | :heavy_check_mark:                |
 | DDPG                | :heavy_check_mark:           | :x:                | :heavy_check_mark: | :x:                | :x:                 | :x:                | :heavy_check_mark: <sup>(4)</sup>|
 | DQN                 | :heavy_check_mark:           | :x:                | :x:                | :heavy_check_mark: | :x:                 | :x:                | :x:                               |
 | GAIL <sup>(2)</sup> | :heavy_check_mark:           | :x:                | :heavy_check_mark: |:heavy_check_mark:| :x:                 | :x:                | :heavy_check_mark: <sup>(4)</sup> |
@@ -156,15 +161,16 @@ All the following examples can be executed online using Google colab notebooks:
 | PPO1                | :heavy_check_mark:           | :x:                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:  | :heavy_check_mark: | :heavy_check_mark: <sup>(4)</sup> |
 | PPO2                | :heavy_check_mark:           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:  | :heavy_check_mark: | :heavy_check_mark:                |
 | SAC                 | :heavy_check_mark:           | :x:                | :heavy_check_mark: | :x:                | :x:                 | :x:                | :x:                               |
+| TD3                 | :heavy_check_mark:           | :x:                | :heavy_check_mark: | :x:                | :x:                 | :x:                | :x:                               |
 | TRPO                | :heavy_check_mark:           | :x:                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:  | :heavy_check_mark: | :heavy_check_mark: <sup>(4)</sup> |
 
 <sup><sup>(1): Whether or not the algorithm has be refactored to fit the ```BaseRLModel``` class.</sup></sup><br>
 <sup><sup>(2): Only implemented for TRPO.</sup></sup><br>
-<sup><sup>(3): Re-implemented from scratch</sup></sup><br>
+<sup><sup>(3): Re-implemented from scratch, now supports DQN, DDPG, SAC and TD3</sup></sup><br>
 <sup><sup>(4): Multi Processing with [MPI](https://mpi4py.readthedocs.io/en/stable/).</sup></sup><br>
 <sup><sup>(5): TODO, in project scope.</sup></sup>
 
-NOTE: Soft Actor-Critic (SAC) was not part of the original baselines and HER was reimplemented from scratch.
+NOTE: Soft Actor-Critic (SAC) and Twin Delayed DDPG (TD3) were not part of the original baselines and HER was reimplemented from scratch.
 
 Actions ```gym.spaces```:
  * ```Box```: A N-dimensional box that containes every point in the action space.
@@ -194,7 +200,7 @@ To cite this repository in publications:
 
 ```
 @misc{stable-baselines,
-  author = {Hill, Ashley and Raffin, Antonin and Ernestus, Maximilian and Gleave, Adam and Traore, Rene and Dhariwal, Prafulla and Hesse, Christopher and Klimov, Oleg and Nichol, Alex and Plappert, Matthias and Radford, Alec and Schulman, John and Sidor, Szymon and Wu, Yuhuai},
+  author = {Hill, Ashley and Raffin, Antonin and Ernestus, Maximilian and Gleave, Adam and Kanervisto, Anssi and Traore, Rene and Dhariwal, Prafulla and Hesse, Christopher and Klimov, Oleg and Nichol, Alex and Plappert, Matthias and Radford, Alec and Schulman, John and Sidor, Szymon and Wu, Yuhuai},
   title = {Stable Baselines},
   year = {2018},
   publisher = {GitHub},
@@ -205,7 +211,7 @@ To cite this repository in publications:
 
 ## Maintainers
 
-Stable-Baselines is currently maintained by [Ashley Hill](https://github.com/hill-a) (aka @hill-a), [Antonin Raffin](https://araffin.github.io/) (aka [@araffin](https://github.com/araffin)), [Maximilian Ernestus](https://github.com/erniejunior) (aka @erniejunior) and [Adam Gleave](https://github.com/adamgleave) (@AdamGleave).
+Stable-Baselines is currently maintained by [Ashley Hill](https://github.com/hill-a) (aka @hill-a), [Antonin Raffin](https://araffin.github.io/) (aka [@araffin](https://github.com/araffin)), [Maximilian Ernestus](https://github.com/erniejunior) (aka @erniejunior), [Adam Gleave](https://github.com/adamgleave) (@AdamGleave) and [Anssi Kanervisto](https://github.com/Miffyli) (@Miffyli).
 
 **Important Note: We do not do technical support, nor consulting** and don't answer personal questions per email.
 
@@ -220,4 +226,4 @@ If you want to contribute, please read **CONTRIBUTING.md** guide first.
 
 Stable Baselines was created in the [robotics lab U2IS](http://u2is.ensta-paristech.fr/index.php?lang=en) ([INRIA Flowers](https://flowers.inria.fr/) team) at [ENSTA ParisTech](http://www.ensta-paristech.fr/en).
 
-Logo credits: L.M. Tenkes
+Logo credits: [L.M. Tenkes](https://www.instagram.com/lucillehue/)

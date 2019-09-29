@@ -30,6 +30,7 @@ This toolset is a fork of OpenAI Baselines, with a major structural refactoring,
 - PEP8 compliant (unified code style)
 - Documented functions and classes
 - More tests & more code coverage
+- Additional algorithms: SAC and TD3 (+ HER support for DQN, DDPG, SAC and TD3)
 
 
 .. toctree::
@@ -48,6 +49,8 @@ This toolset is a fork of OpenAI Baselines, with a major structural refactoring,
    guide/rl_zoo
    guide/pretrain
    guide/checking_nan
+   guide/save_format
+   guide/export
 
 
 .. toctree::
@@ -66,6 +69,7 @@ This toolset is a fork of OpenAI Baselines, with a major structural refactoring,
   modules/ppo1
   modules/ppo2
   modules/sac
+  modules/td3
   modules/trpo
 
 .. toctree::
@@ -93,7 +97,7 @@ To cite this project in publications:
 .. code-block:: bibtex
 
     @misc{stable-baselines,
-      author = {Hill, Ashley and Raffin, Antonin and Ernestus, Maximilian and Gleave, Adam and Traore, Rene and Dhariwal, Prafulla and Hesse, Christopher and Klimov, Oleg and Nichol, Alex and Plappert, Matthias and Radford, Alec and Schulman, John and Sidor, Szymon and Wu, Yuhuai},
+      author = {Hill, Ashley and Raffin, Antonin and Ernestus, Maximilian and Gleave, Adam and Kanervisto, Anssi and Traore, Rene and Dhariwal, Prafulla and Hesse, Christopher and Klimov, Oleg and Nichol, Alex and Plappert, Matthias and Radford, Alec and Schulman, John and Sidor, Szymon and Wu, Yuhuai},
       title = {Stable Baselines},
       year = {2018},
       publisher = {GitHub},

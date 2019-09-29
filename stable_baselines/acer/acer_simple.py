@@ -99,10 +99,10 @@ class ACER(ActorCriticRLModel):
                  learning_rate=7e-4, lr_schedule='linear', rprop_alpha=0.99, rprop_epsilon=1e-5, buffer_size=5000,
                  replay_ratio=4, replay_start=1000, correction_term=10.0, trust_region=True,
                  alpha=0.99, delta=1, verbose=0, tensorboard_log=None,
-                 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False):
+                 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False, seed=0):
 
         super(ACER, self).__init__(policy=policy, env=env, verbose=verbose, requires_vec_env=True,
-                                   _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs)
+                                   _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs, seed=seed)
 
         self.n_steps = n_steps
         self.replay_ratio = replay_ratio
@@ -185,7 +185,7 @@ class ACER(ActorCriticRLModel):
             self.graph = tf.Graph()
             with self.graph.as_default():
                 self.sess = tf_util.make_session(num_cpu=self.num_procs, graph=self.graph)
-
+                self.set_random_seed(self.seed)
                 n_batch_step = None
                 if issubclass(self.policy, RecurrentActorCriticPolicy):
                     n_batch_step = self.n_envs
@@ -457,14 +457,14 @@ class ACER(ActorCriticRLModel):
 
         return self.names_ops, step_return[1:]  # strip off _train
 
-    def learn(self, total_timesteps, callback=None, seed=None, log_interval=100, tb_log_name="ACER",
+    def learn(self, total_timesteps, callback=None, log_interval=100, tb_log_name="ACER",
               reset_num_timesteps=True):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
 
         with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
                 as writer:
-            self._setup_learn(seed)
+            self._setup_learn()
 
             self.learning_rate_schedule = Scheduler(initial_value=self.learning_rate, n_values=total_timesteps,
                                                     schedule=self.lr_schedule)

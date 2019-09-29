@@ -1,7 +1,7 @@
 import pytest
 
-from stable_baselines import A2C, ACER, ACKTR, DQN, DDPG, PPO1, PPO2, SAC, TRPO
-from stable_baselines.ddpg import AdaptiveParamNoiseSpec
+from stable_baselines import A2C, ACER, ACKTR, DQN, DDPG, PPO1, PPO2, SAC, TRPO, TD3
+from stable_baselines.common.noise import AdaptiveParamNoiseSpec, NormalActionNoise
 from stable_baselines.common import set_global_seeds
 from stable_baselines.common.identity_env import IdentityEnv, IdentityEnvBox
 from stable_baselines.common.vec_env import DummyVecEnv
@@ -18,24 +18,32 @@ LEARN_FUNC_DICT = {
     'ppo1': lambda e: PPO1(policy="MlpPolicy", env=e).learn(total_timesteps=1000),
     'ppo2': lambda e: PPO2(policy="MlpPolicy", env=e).learn(total_timesteps=1000),
     'sac': lambda e: SAC(policy="MlpPolicy", env=e).learn(total_timesteps=1000),
+    'td3': lambda e: TD3(policy="MlpPolicy", env=e).learn(total_timesteps=1000),
     'trpo': lambda e: TRPO(policy="MlpPolicy", env=e).learn(total_timesteps=1000),
 }
 
 N_STEPS_TRAINING = 1000
 SEED = 0
 
-# NOTE: not working with ACKTR yet
-@pytest.mark.parametrize("algo", [A2C, ACER, PPO1, PPO2, TRPO])
+# Not working for TD3 yet
+# SAC and DQN fails for n_steps=10000
+@pytest.mark.parametrize("algo", [A2C, ACKTR, ACER, DDPG, DQN, PPO1, PPO2, SAC, TRPO])
 def test_deterministic_training_common(algo):
     results = [[], []]
     rewards = [[], []]
+    kwargs = {}
+    if algo in [DDPG, TD3, SAC]:
+        env_id = 'Pendulum-v0'
+        # TODO: fix when using action noise
+        # + test with param noise
+        # kwargs = {'action_noise': NormalActionNoise(0.0, 0.1)}
+    else:
+        env_id = 'CartPole-v1'
+
     for i in range(2):
-        set_global_seeds(0)
-        model = algo('MlpPolicy', 'CartPole-v1')
-        if hasattr(model.env, 'seed'):
-            model.env.seed(SEED)
-        else:
-            model.env.env_method("seed", SEED)
+        # set_global_seeds(0)
+        model = algo('MlpPolicy', env_id, seed=SEED, **kwargs)
+        # model.env.seed(0)
         model.learn(N_STEPS_TRAINING)
         env = model.get_env()
         obs = env.reset()
@@ -75,7 +83,7 @@ def test_identity(model_name):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("model_name", ['a2c', 'ddpg', 'ppo1', 'ppo2', 'sac', 'trpo'])
+@pytest.mark.parametrize("model_name", ['a2c', 'ddpg', 'ppo1', 'ppo2', 'sac', 'trpo', 'td3'])
 def test_identity_continuous(model_name):
     """
     Test if the algorithm (with a given policy)

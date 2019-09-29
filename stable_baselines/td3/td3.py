@@ -60,10 +60,11 @@ class TD3(OffPolicyRLModel):
                  tau=0.005, policy_delay=2, action_noise=None,
                  target_policy_noise=0.2, target_noise_clip=0.5,
                  random_exploration=0.0, verbose=0, tensorboard_log=None,
-                 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False):
+                 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False, seed=0):
 
         super(TD3, self).__init__(policy=policy, env=env, replay_buffer=None, verbose=verbose,
-                                  policy_base=TD3Policy, requires_vec_env=False, policy_kwargs=policy_kwargs)
+                                  policy_base=TD3Policy, requires_vec_env=False, policy_kwargs=policy_kwargs,
+                                  seed=seed)
 
         self.buffer_size = buffer_size
         self.learning_rate = learning_rate
@@ -122,6 +123,7 @@ class TD3(OffPolicyRLModel):
         with SetVerbosity(self.verbose):
             self.graph = tf.Graph()
             with self.graph.as_default():
+                self.set_random_seed(self.seed)
                 n_cpu = multiprocessing.cpu_count()
                 if sys.platform == 'darwin':
                     n_cpu //= 2
@@ -273,7 +275,7 @@ class TD3(OffPolicyRLModel):
 
         return qf1_loss, qf2_loss
 
-    def learn(self, total_timesteps, callback=None, seed=None,
+    def learn(self, total_timesteps, callback=None,
               log_interval=4, tb_log_name="TD3", reset_num_timesteps=True, replay_wrapper=None):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
@@ -284,7 +286,7 @@ class TD3(OffPolicyRLModel):
         with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
                 as writer:
 
-            self._setup_learn(seed)
+            self._setup_learn()
 
             # Transform to callable if needed
             self.learning_rate = get_schedule_fn(self.learning_rate)

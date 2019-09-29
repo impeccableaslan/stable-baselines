@@ -54,11 +54,11 @@ class DQN(OffPolicyRLModel):
                  learning_starts=1000, target_network_update_freq=500, prioritized_replay=False,
                  prioritized_replay_alpha=0.6, prioritized_replay_beta0=0.4, prioritized_replay_beta_iters=None,
                  prioritized_replay_eps=1e-6, param_noise=False, verbose=0, tensorboard_log=None,
-                 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False):
+                 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False, seed=0):
 
         # TODO: replay_buffer refactoring
         super(DQN, self).__init__(policy=policy, env=env, replay_buffer=None, verbose=verbose, policy_base=DQNPolicy,
-                                  requires_vec_env=False, policy_kwargs=policy_kwargs)
+                                  requires_vec_env=False, policy_kwargs=policy_kwargs, seed=seed)
 
         self.param_noise = param_noise
         self.learning_starts = learning_starts
@@ -117,6 +117,7 @@ class DQN(OffPolicyRLModel):
 
             self.graph = tf.Graph()
             with self.graph.as_default():
+                self.set_random_seed(self.seed)
                 self.sess = tf_util.make_session(graph=self.graph)
 
                 optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
@@ -142,14 +143,14 @@ class DQN(OffPolicyRLModel):
 
                 self.summary = tf.summary.merge_all()
 
-    def learn(self, total_timesteps, callback=None, seed=None, log_interval=100, tb_log_name="DQN",
+    def learn(self, total_timesteps, callback=None, log_interval=100, tb_log_name="DQN",
               reset_num_timesteps=True, replay_wrapper=None):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
 
         with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
                 as writer:
-            self._setup_learn(seed)
+            self._setup_learn()
 
             # Create the replay buffer
             if self.prioritized_replay:

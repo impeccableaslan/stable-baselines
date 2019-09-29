@@ -14,8 +14,8 @@ class ProbabilityDistribution(object):
         this seed will be incremented after each call of sample()
     """
 
-    def __init__(self, seed=0):
-        self.current_seed = seed
+    def __init__(self):
+        super(ProbabilityDistribution, self).__init__()
 
     def flatparam(self):
         """
@@ -284,7 +284,7 @@ class BernoulliProbabilityDistributionType(ProbabilityDistributionType):
 
 
 class CategoricalProbabilityDistribution(ProbabilityDistribution):
-    def __init__(self, logits, seed=0):
+    def __init__(self, logits):
         """
         Probability distributions from categorical input
 
@@ -293,7 +293,7 @@ class CategoricalProbabilityDistribution(ProbabilityDistribution):
             this seed will be incremented after each call of sample()
         """
         self.logits = logits
-        super(CategoricalProbabilityDistribution, self).__init__(seed)
+        super(CategoricalProbabilityDistribution, self).__init__()
 
     def flatparam(self):
         return self.logits
@@ -327,10 +327,9 @@ class CategoricalProbabilityDistribution(ProbabilityDistribution):
         return tf.reduce_sum(p_0 * (tf.log(z_0) - a_0), axis=-1)
 
     def sample(self):
-        self.current_seed += 1
         # Gumbel-max trick to sample
         # a categorical distribution (see http://amid.fish/humble-gumbel)
-        uniform = tf.random_uniform(tf.shape(self.logits), dtype=self.logits.dtype, seed=self.current_seed)
+        uniform = tf.random_uniform(tf.shape(self.logits), dtype=self.logits.dtype)
         return tf.argmax(self.logits - tf.log(-tf.log(uniform)), axis=-1)
 
     @classmethod
@@ -345,7 +344,7 @@ class CategoricalProbabilityDistribution(ProbabilityDistribution):
 
 
 class MultiCategoricalProbabilityDistribution(ProbabilityDistribution):
-    def __init__(self, nvec, flat, seed=0):
+    def __init__(self, nvec, flat):
         """
         Probability distributions from multicategorical input
 
@@ -356,7 +355,7 @@ class MultiCategoricalProbabilityDistribution(ProbabilityDistribution):
         """
         self.flat = flat
         self.categoricals = list(map(CategoricalProbabilityDistribution, tf.split(flat, nvec, axis=-1)))
-        super(MultiCategoricalProbabilityDistribution, self).__init__(seed)
+        super(MultiCategoricalProbabilityDistribution, self).__init__()
 
     def flatparam(self):
         return self.flat
@@ -388,7 +387,7 @@ class MultiCategoricalProbabilityDistribution(ProbabilityDistribution):
 
 
 class DiagGaussianProbabilityDistribution(ProbabilityDistribution):
-    def __init__(self, flat, seed=0):
+    def __init__(self, flat):
         """
         Probability distributions from multivariate gaussian input
 
@@ -401,7 +400,7 @@ class DiagGaussianProbabilityDistribution(ProbabilityDistribution):
         self.mean = mean
         self.logstd = logstd
         self.std = tf.exp(logstd)
-        super(DiagGaussianProbabilityDistribution, self).__init__(seed)
+        super(DiagGaussianProbabilityDistribution, self).__init__()
 
     def flatparam(self):
         return self.flat
@@ -424,11 +423,9 @@ class DiagGaussianProbabilityDistribution(ProbabilityDistribution):
         return tf.reduce_sum(self.logstd + .5 * np.log(2.0 * np.pi * np.e), axis=-1)
 
     def sample(self):
-        self.current_seed += 1
         # Bounds are taken into acount outside this class (during training only)
         # Otherwise, it changes the distribution and breaks PPO2 for instance
         return self.mean + self.std * tf.random_normal(tf.shape(self.mean),
-                                                       seed=self.current_seed,
                                                        dtype=self.mean.dtype)
 
     @classmethod
@@ -443,7 +440,7 @@ class DiagGaussianProbabilityDistribution(ProbabilityDistribution):
 
 
 class BernoulliProbabilityDistribution(ProbabilityDistribution):
-    def __init__(self, logits, seed=0):
+    def __init__(self, logits):
         """
         Probability distributions from bernoulli input
 
@@ -453,7 +450,7 @@ class BernoulliProbabilityDistribution(ProbabilityDistribution):
         """
         self.logits = logits
         self.probabilities = tf.sigmoid(logits)
-        super(BernoulliProbabilityDistribution, self).__init__(seed)
+        super(BernoulliProbabilityDistribution, self).__init__()
 
     def flatparam(self):
         return self.logits

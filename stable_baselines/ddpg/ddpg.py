@@ -199,11 +199,11 @@ class DDPG(OffPolicyRLModel):
                  return_range=(-np.inf, np.inf), actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1.,
                  render=False, render_eval=False, memory_limit=None, buffer_size=50000, random_exploration=0.0,
                  verbose=0, tensorboard_log=None, _init_setup_model=True, policy_kwargs=None,
-                 full_tensorboard_log=False):
+                 full_tensorboard_log=False, seed=0):
 
         super(DDPG, self).__init__(policy=policy, env=env, replay_buffer=None,
                                    verbose=verbose, policy_base=DDPGPolicy,
-                                   requires_vec_env=False, policy_kwargs=policy_kwargs)
+                                   requires_vec_env=False, policy_kwargs=policy_kwargs, seed=seed)
 
         # Parameters.
         self.gamma = gamma
@@ -320,6 +320,7 @@ class DDPG(OffPolicyRLModel):
 
             self.graph = tf.Graph()
             with self.graph.as_default():
+                self.set_random_seed(self.seed)
                 self.sess = tf_util.single_threaded_session(graph=self.graph)
 
                 self.replay_buffer = ReplayBuffer(self.buffer_size)
@@ -797,7 +798,7 @@ class DDPG(OffPolicyRLModel):
                 self.param_noise_stddev: self.param_noise.current_stddev,
             })
 
-    def learn(self, total_timesteps, callback=None, seed=None, log_interval=100, tb_log_name="DDPG",
+    def learn(self, total_timesteps, callback=None, log_interval=100, tb_log_name="DDPG",
               reset_num_timesteps=True, replay_wrapper=None):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
@@ -807,7 +808,7 @@ class DDPG(OffPolicyRLModel):
 
         with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
                 as writer:
-            self._setup_learn(seed)
+            self._setup_learn()
 
             # a list for tensorboard logging, to prevent logging with the same step number, if it already occured
             self.tb_seen_steps = []

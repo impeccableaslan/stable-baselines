@@ -41,11 +41,13 @@ class A2C(ActorCriticRLModel):
     """
 
     def __init__(self, policy, env, gamma=0.99, n_steps=5, vf_coef=0.25, ent_coef=0.01, max_grad_norm=0.5,
-                 learning_rate=7e-4, alpha=0.99, epsilon=1e-5, lr_schedule='constant', verbose=0, tensorboard_log=None,
-                 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False):
+                 learning_rate=7e-4, alpha=0.99, epsilon=1e-5, lr_schedule='constant', verbose=0,
+                 tensorboard_log=None, _init_setup_model=True, policy_kwargs=None,
+                 full_tensorboard_log=False, seed=0):
 
         super(A2C, self).__init__(policy=policy, env=env, verbose=verbose, requires_vec_env=True,
-                                  _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs)
+                                  _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs,
+                                  seed=seed)
 
         self.n_steps = n_steps
         self.gamma = gamma
@@ -99,6 +101,7 @@ class A2C(ActorCriticRLModel):
 
             self.graph = tf.Graph()
             with self.graph.as_default():
+                self.set_random_seed(self.seed)
                 self.sess = tf_util.make_session(graph=self.graph)
 
                 self.n_batch = self.n_envs * self.n_steps
@@ -216,15 +219,14 @@ class A2C(ActorCriticRLModel):
 
         return policy_loss, value_loss, policy_entropy
 
-    def learn(self, total_timesteps, callback=None, seed=None, log_interval=100, tb_log_name="A2C",
+    def learn(self, total_timesteps, callback=None, log_interval=100, tb_log_name="A2C",
               reset_num_timesteps=True):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
 
         with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
                 as writer:
-            self._setup_learn(seed)
-
+            self._setup_learn()
             self.learning_rate_schedule = Scheduler(initial_value=self.learning_rate, n_values=total_timesteps,
                                                     schedule=self.lr_schedule)
 

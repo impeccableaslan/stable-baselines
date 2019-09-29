@@ -9,11 +9,7 @@ from stable_baselines.a2c.utils import linear
 class ProbabilityDistribution(object):
     """
     Base clas for describing a probability distribution.
-
-    :param seed: (int) Random seed, it is a hack to have reproducible results with tf
-        this seed will be incremented after each call of sample()
     """
-
     def __init__(self):
         super(ProbabilityDistribution, self).__init__()
 
@@ -289,8 +285,6 @@ class CategoricalProbabilityDistribution(ProbabilityDistribution):
         Probability distributions from categorical input
 
         :param logits: ([float]) the categorical logits input
-        :param seed: (int) Random seed, it is a hack to have reproducible results with tf
-            this seed will be incremented after each call of sample()
         """
         self.logits = logits
         super(CategoricalProbabilityDistribution, self).__init__()
@@ -350,8 +344,6 @@ class MultiCategoricalProbabilityDistribution(ProbabilityDistribution):
 
         :param nvec: ([int]) the sizes of the different categorical inputs
         :param flat: ([float]) the categorical logits input
-        :param seed: (int) Random seed, it is a hack to have reproducible results with tf
-            this seed will be incremented after each call of sample()
         """
         self.flat = flat
         self.categoricals = list(map(CategoricalProbabilityDistribution, tf.split(flat, nvec, axis=-1)))
@@ -392,8 +384,6 @@ class DiagGaussianProbabilityDistribution(ProbabilityDistribution):
         Probability distributions from multivariate gaussian input
 
         :param flat: ([float]) the multivariate gaussian input data
-        :param seed: (int) Random seed, it is a hack to have reproducible results with tf
-            this seed will be incremented after each call of sample()
         """
         self.flat = flat
         mean, logstd = tf.split(axis=len(flat.shape) - 1, num_or_size_splits=2, value=flat)
@@ -445,8 +435,6 @@ class BernoulliProbabilityDistribution(ProbabilityDistribution):
         Probability distributions from bernoulli input
 
         :param logits: ([float]) the bernoulli input data
-        :param seed: (int) Random seed, it is a hack to have reproducible results with tf
-            this seed will be incremented after each call of sample()
         """
         self.logits = logits
         self.probabilities = tf.sigmoid(logits)

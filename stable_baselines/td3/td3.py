@@ -333,7 +333,7 @@ class TD3(OffPolicyRLModel):
                             # Break if the warmup phase is not over
                             # or if there are not enough samples in the replay buffer
                             if not self.replay_buffer.can_sample(self.batch_size) \
-                                    or (self.num_timesteps // self.env.num_envs) < self.learning_starts:
+                                    or self.num_timesteps < self.learning_starts:
                                 break
                             n_updates += 1
                             # Compute current learning_rate

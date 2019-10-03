@@ -10,7 +10,6 @@ import tensorflow as tf
 from stable_baselines.a2c.utils import total_episode_reward_logger
 from stable_baselines.common import tf_util, OffPolicyRLModel, SetVerbosity, TensorboardWriter
 from stable_baselines.common.vec_env import VecEnv
-from stable_baselines.common.runners import AbstractEnvRunner
 from stable_baselines.deepq.replay_buffer import ReplayBuffer
 from stable_baselines.ppo2.ppo2 import safe_mean, get_schedule_fn
 from stable_baselines.sac.sac import get_vars
@@ -295,7 +294,7 @@ class TD3(OffPolicyRLModel):
             start_time = time.time()
             episode_rewards = [0.0]
             episode_successes = []
-            runner = Runner(env=self.env, model=self)
+            obs = self.env.reset()
             if self.action_noise is not None:
                 self.action_noise.reset()
             self.episode_reward = np.zeros((1,))
@@ -303,18 +302,36 @@ class TD3(OffPolicyRLModel):
             n_updates = 0
             infos_values = []
 
-            for step in range(0, total_timesteps, self.env.num_envs):
+            for step in range(0, total_timesteps, self.n_envs):
                 if callback is not None:
                     # Only stop training if return value is False, not when it is None. This is for backwards
                     # compatibility with callbacks that have no return statement.
                     if callback(locals(), globals()) is False:
                         break
 
-                obs, new_obs, action, reward, done, info = runner.run()
+                prev_obs = obs
+                if (self.num_timesteps < self.learning_starts
+                    or np.random.rand() < self.random_exploration):
+                    # No need to rescale when sampling random action
+                    rescaled_action = action = [self.env.action_space.sample() for _ in range(self.n_envs)]
+                else:
+                    action = self.policy_tf.step(prev_obs).flatten()
+                    action = [np.array([a]) for a in action]
+                    # Add noise to the action, as the policy
+                    # is deterministic, this is required for exploration
+                    if self.action_noise is not None:
+                        action = np.clip(action + self.action_noise(), -1, 1)
+                    # Rescale from [-1, 1] to the correct bounds
+                    rescaled_action = action * np.abs(self.action_space.low)
 
-                for i in range(self.env.num_envs):
+                for i in range(self.n_envs):
+                    assert action[i].shape == self.env.action_space.shape
+
+                obs, reward, done, info = self.env.step(rescaled_action)
+
+                for i in range(self.n_envs):
                     # Store transition in the replay buffer.
-                    self.replay_buffer.add(obs[i], action[i], reward[i], new_obs[i], float(done[i]))
+                    self.replay_buffer.add(prev_obs[i], action[i], reward[i], obs[i], float(done[i]))
                     # Retrieve reward and episode length if using Monitor wrapper
                     maybe_ep_info = info[i].get('episode')
                     if maybe_ep_info is not None:
@@ -456,55 +473,3 @@ class TD3(OffPolicyRLModel):
         params_to_save = self.get_parameters()
 
         self._save_to_file(save_path, data=data, params=params_to_save, cloudpickle=cloudpickle)
-
-
-class Runner(AbstractEnvRunner):
-    def __init__(self, *, env, model):
-        """
-        A runner to learn the policy of an environment for a model
-
-        :param env: (Gym environment) The environment to learn from
-        """
-        super().__init__(env=env, model=model.policy_tf, n_steps=1)
-        self.td3 = model
-    
-    def reset(self):
-        self.obs[:] = self.env.reset()
-
-    def run(self):
-        """
-        Run a learning step of the model
-
-        :return:
-            - observations: (np.ndarray) the observations
-            - actions: (np.ndarray) the actions
-            - rewards: (np.ndarray) the rewards
-            - new_observations: (np.ndarray) the new observations
-            - infos: (dict) the extra information of the model
-        """
-        # Before training starts, randomly sample actions
-        # from a uniform distribution for better exploration.
-        # Afterwards, use the learned policy
-        # if random_exploration is set to 0 (normal setting)
-        prev_obs = self.obs
-        if (self.td3.num_timesteps < self.td3.learning_starts
-                or np.random.rand() < self.td3.random_exploration):
-            # No need to rescale when sampling random action
-            rescaled_action = action = [self.env.action_space.sample() for _ in range(self.env.num_envs)]
-        else:
-            action = self.model.step(prev_obs).flatten()
-            action = [np.array([a]) for a in action]
-            # Add noise to the action, as the policy
-            # is deterministic, this is required for exploration
-            if self.td3.action_noise is not None:
-                action = np.clip(action + self.td3.action_noise(), -1, 1)
-            # Rescale from [-1, 1] to the correct bounds
-            rescaled_action = action * np.abs(self.td3.action_space.low)
-
-        for i in range(self.env.num_envs):
-            assert action[i].shape == self.env.action_space.shape
-
-        self.obs, reward, done, info = self.env.step(rescaled_action)
-
-        return prev_obs, self.obs, action, reward, done, info
-        
